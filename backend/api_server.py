@@ -422,40 +422,114 @@ def draw_parallax_sky(width=1024, height=512, game_plan=None):
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    for y in range(height):
-        r = int(28 + (y / height) * 25)
-        g = int(24 + (y / height) * 30)
-        b = int(45 + (y / height) * 40)
-        draw.line([0, y, width, y], fill=(r, g, b, 255))
+    genre_lower = (game_plan.get("genre", "") if game_plan else "").lower()
+    theme_lower = (game_plan.get("theme", "") if game_plan else "").lower()
+    is_car = "rac" in genre_lower or "car" in genre_lower or "vehicle" in theme_lower or "racer" in theme_lower
+    is_shooter = "shoot" in genre_lower or "top down" in genre_lower
 
-    # Detailed medieval castle stone wall background with archway and chandelier
-    block_h = 32
-    block_w = 64
-    for r_idx, y in enumerate(range(0, height, block_h)):
-        offset = (block_w // 2) if (r_idx % 2 == 1) else 0
-        for x in range(-block_w + offset, width + block_w, block_w):
-            fill_c = (90 + (x % 15), 85 + (y % 12), 80 + (x % 10), 255)
-            draw.rectangle([x, y, x + block_w - 2, y + block_h - 2], fill=fill_c)
-            draw.line([x, y, x + block_w - 2, y], fill=(130, 125, 120, 255))
-            draw.line([x, y + block_h - 2, x + block_w - 2, y + block_h - 2], fill=(45, 40, 38, 255))
+    if is_car:
+        # ── Racing / City Night Skyline Background ──────────────────────────
+        # Night sky gradient
+        for y in range(height):
+            t = y / height
+            r = int(8 + t * 18)
+            g = int(10 + t * 22)
+            b = int(30 + t * 35)
+            draw.line([0, y, width, y], fill=(r, g, b, 255))
 
-    # Archway on right side
-    arch_cx, arch_cy = int(width * 0.85), int(height * 0.65)
-    draw.ellipse([arch_cx - 100, arch_cy - 120, arch_cx + 100, arch_cy + 120], fill=(25, 20, 18, 255))
-    draw.rectangle([arch_cx - 100, arch_cy, arch_cx + 100, height], fill=(25, 20, 18, 255))
-    
-    # Wooden door inside archway
-    draw.rectangle([arch_cx - 80, arch_cy - 60, arch_cx + 80, height], fill=(110, 65, 30, 255))
-    for dx in range(-70, 80, 20):
-        draw.line([arch_cx + dx, arch_cy - 50, arch_cx + dx, height], fill=(70, 40, 18, 255), width=2)
-    draw.ellipse([arch_cx + 40, arch_cy + 40, arch_cx + 56, arch_cy + 56], fill=(210, 170, 40, 255))
+        # Moon
+        draw.ellipse([width - 120, 20, width - 60, 80], fill=(240, 235, 200, 255))
+        draw.ellipse([width - 108, 26, width - 66, 74], fill=(8, 12, 30, 255))
 
-    # Wall chandelier / sconce torch on left
-    tx, ty = int(width * 0.15), int(height * 0.25)
-    draw.rectangle([tx - 12, ty, tx + 12, ty + 40], fill=(40, 38, 45, 255))
-    draw.polygon([(tx - 25, ty), (tx + 25, ty), (tx, ty + 25)], fill=(65, 60, 70, 255))
-    draw.ellipse([tx - 18, ty - 25, tx + 18, ty + 5], fill=(255, 140, 20, 255))
-    draw.ellipse([tx - 10, ty - 20, tx + 10, ty], fill=(255, 230, 80, 255))
+        # Starfield
+        import random as _rnd
+        _rnd.seed(77)
+        for _ in range(60):
+            sx = _rnd.randint(0, width)
+            sy = _rnd.randint(0, int(height * 0.55))
+            br = _rnd.randint(160, 255)
+            draw.rectangle([sx, sy, sx + 1, sy + 1], fill=(br, br, br, 255))
+
+        # Distant city buildings silhouette (dark purple-blue)
+        _rnd.seed(42)
+        building_colors = [(20, 18, 45, 255), (28, 22, 55, 255), (15, 14, 38, 255)]
+        x = 0
+        while x < width:
+            bw = _rnd.randint(40, 90)
+            bh = _rnd.randint(int(height * 0.25), int(height * 0.60))
+            by = height - bh
+            col = _rnd.choice(building_colors)
+            draw.rectangle([x, by, x + bw - 2, height], fill=col)
+            # Windows (lit yellow)
+            for wy in range(by + 8, height - 20, 18):
+                for wx in range(x + 6, x + bw - 10, 14):
+                    if _rnd.random() > 0.45:
+                        draw.rectangle([wx, wy, wx + 6, wy + 8], fill=(255, 210, 80, 255))
+            # Neon roof strip
+            neon = _rnd.choice([(0, 220, 255, 255), (255, 60, 180, 255), (60, 255, 180, 255)])
+            draw.line([x, by, x + bw - 2, by], fill=neon, width=3)
+            x += bw + _rnd.randint(2, 8)
+
+        # Road strip at bottom
+        road_top = int(height * 0.72)
+        draw.rectangle([0, road_top, width, height], fill=(38, 38, 48, 255))
+        # Center dashed yellow line
+        mid_y = road_top + (height - road_top) // 2
+        for dx in range(0, width, 50):
+            draw.rectangle([dx, mid_y - 3, dx + 28, mid_y + 3], fill=(255, 210, 30, 255))
+        # Side kerb
+        draw.rectangle([0, road_top, width, road_top + 6], fill=(200, 200, 210, 255))
+
+    elif is_shooter:
+        # ── Top-Down Space / Sci-Fi Background ──────────────────────────────
+        for y in range(height):
+            draw.line([0, y, width, y], fill=(5, 5, 18, 255))
+        import random as _rnd
+        _rnd.seed(99)
+        for _ in range(120):
+            sx = _rnd.randint(0, width)
+            sy = _rnd.randint(0, height)
+            br = _rnd.randint(120, 255)
+            sz = _rnd.choice([1, 1, 1, 2])
+            draw.rectangle([sx, sy, sx + sz, sy + sz], fill=(br, br, br, 255))
+        # Nebula clouds
+        for _ in range(5):
+            nx = _rnd.randint(0, width)
+            ny = _rnd.randint(0, height)
+            nr = _rnd.randint(60, 140)
+            nc = _rnd.choice([(60, 0, 90, 60), (0, 50, 90, 60), (80, 20, 0, 60)])
+            draw.ellipse([nx - nr, ny - nr // 2, nx + nr, ny + nr // 2], fill=nc)
+
+    else:
+        # ── Default: Medieval Castle Stone Wall ─────────────────────────────
+        for y in range(height):
+            r = int(28 + (y / height) * 25)
+            g = int(24 + (y / height) * 30)
+            b = int(45 + (y / height) * 40)
+            draw.line([0, y, width, y], fill=(r, g, b, 255))
+
+        block_h = 32
+        block_w = 64
+        for r_idx, y in enumerate(range(0, height, block_h)):
+            offset = (block_w // 2) if (r_idx % 2 == 1) else 0
+            for x in range(-block_w + offset, width + block_w, block_w):
+                fill_c = (90 + (x % 15), 85 + (y % 12), 80 + (x % 10), 255)
+                draw.rectangle([x, y, x + block_w - 2, y + block_h - 2], fill=fill_c)
+                draw.line([x, y, x + block_w - 2, y], fill=(130, 125, 120, 255))
+                draw.line([x, y + block_h - 2, x + block_w - 2, y + block_h - 2], fill=(45, 40, 38, 255))
+
+        arch_cx, arch_cy = int(width * 0.85), int(height * 0.65)
+        draw.ellipse([arch_cx - 100, arch_cy - 120, arch_cx + 100, arch_cy + 120], fill=(25, 20, 18, 255))
+        draw.rectangle([arch_cx - 100, arch_cy, arch_cx + 100, height], fill=(25, 20, 18, 255))
+        draw.rectangle([arch_cx - 80, arch_cy - 60, arch_cx + 80, height], fill=(110, 65, 30, 255))
+        for dx in range(-70, 80, 20):
+            draw.line([arch_cx + dx, arch_cy - 50, arch_cx + dx, height], fill=(70, 40, 18, 255), width=2)
+        draw.ellipse([arch_cx + 40, arch_cy + 40, arch_cx + 56, arch_cy + 56], fill=(210, 170, 40, 255))
+        tx, ty = int(width * 0.15), int(height * 0.25)
+        draw.rectangle([tx - 12, ty, tx + 12, ty + 40], fill=(40, 38, 45, 255))
+        draw.polygon([(tx - 25, ty), (tx + 25, ty), (tx, ty + 25)], fill=(65, 60, 70, 255))
+        draw.ellipse([tx - 18, ty - 25, tx + 18, ty + 5], fill=(255, 140, 20, 255))
+        draw.ellipse([tx - 10, ty - 20, tx + 10, ty], fill=(255, 230, 80, 255))
 
     return img
 
@@ -710,6 +784,8 @@ def generate_all_assets(game_plan, save_dir, job_id=None):
                 return f"{LORA_TRIGGER}, 16-bit pixel art red supercar sports car, speed side-view, sharp dark pixel outline, detailed pixel shading, isolated on pure white background"
             elif key == "platform_tile":
                 return f"{LORA_TRIGGER}, 16-bit pixel art asphalt road tile, yellow dashed center line, road surface, isolated on pure white background"
+            elif key == "background":
+                return f"{LORA_TRIGGER}, 16-bit pixel art night city racing background, neon city skyline, dark road with dashes, parallax buildings, isolated on pure white background"
         if key in assets and assets[key]:
             return f"{LORA_TRIGGER}, {assets[key]}, sharp dark pixel outline, detailed pixel shading, 16-bit SNES arcade sprite, isolated on pure white background"
         return f"{LORA_TRIGGER}, 16-bit pixel art {genre} {key}, {theme}, {fallback_desc}, sharp dark pixel outline, detailed pixel shading, isolated on pure white background"
@@ -1373,15 +1449,20 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             # Since base_img is already at viewport size, no crop needed
             frames.append(np.array(frame_img.convert("RGB")))
 
+    # Save as animated GIF using pure PIL — universally browser-compatible, zero codec dependency.
     try:
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path, fourcc, float(fps), (vp_w, vp_h))
-        for frame in frames:
-            bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            out.write(bgr)
-        out.release()
+        gif_path = output_path.replace(".mp4", ".gif")
+        pil_frames = [Image.fromarray(f).convert("P", dither=Image.FLOYDSTEINBERG) for f in frames]
+        pil_frames[0].save(
+            gif_path,
+            save_all=True,
+            append_images=pil_frames[1:],
+            loop=0,
+            duration=int(1000 / fps),
+            optimize=True,
+        )
     except Exception as e:
-        print(f"OpenCV video rendering note: {e}")
+        print(f"GIF render note: {e}")
 
 # --------------------------------------------------------------------------
 # Pipeline Execution Endpoint Engine
@@ -1453,7 +1534,7 @@ def run_full_pipeline(image_path, user_description="A fun game", job_id=None, ba
         "playability": playability_info,
         "urls": {
             "scene": f"/files/{job_id}/scene.png?v={ts}",
-            "preview": f"/files/{job_id}/preview.mp4?v={ts}",
+            "preview": f"/files/{job_id}/preview.gif?v={ts}",
         },
         "zip_url": f"/files/{job_id}/{zip_filename}?v={ts}"
     }
