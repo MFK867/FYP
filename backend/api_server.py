@@ -204,28 +204,29 @@ def ensure_clip_loaded():
 # --------------------------------------------------------------------------
 
 def sketch_to_layout(image_path):
-    import torch
     raw_caption = "A hand-drawn game level sketch"
     raw_od = ""
-    try:
-        img = Image.open(image_path).convert("RGB")
-        dtype = torch.float16 if DEVICE == "cuda" else torch.float32
-        
-        inputs_cap = florence_processor(
-            text="<MORE_DETAILED_CAPTION>", images=img, return_tensors="pt"
-        ).to(DEVICE, dtype)
-        with torch.no_grad():
-            gen_cap = florence_model.generate(**inputs_cap, max_new_tokens=256, do_sample=False)
-        raw_caption = florence_processor.tokenizer.decode(gen_cap[0], skip_special_tokens=True)
+    if DEVICE == "cuda" and florence_model is not None:
+        try:
+            import torch
+            img = Image.open(image_path).convert("RGB")
+            dtype = torch.float16
+            
+            inputs_cap = florence_processor(
+                text="<MORE_DETAILED_CAPTION>", images=img, return_tensors="pt"
+            ).to(DEVICE, dtype)
+            with torch.no_grad():
+                gen_cap = florence_model.generate(**inputs_cap, max_new_tokens=256, do_sample=False)
+            raw_caption = florence_processor.tokenizer.decode(gen_cap[0], skip_special_tokens=True)
 
-        inputs_od = florence_processor(
-            text="<OD>", images=img, return_tensors="pt"
-        ).to(DEVICE, dtype)
-        with torch.no_grad():
-            gen_od = florence_model.generate(**inputs_od, max_new_tokens=256, do_sample=False)
-        raw_od = florence_processor.tokenizer.decode(gen_od[0], skip_special_tokens=True)
-    except Exception as e:
-        print(f"Florence-2 2-pass note: {e}")
+            inputs_od = florence_processor(
+                text="<OD>", images=img, return_tensors="pt"
+            ).to(DEVICE, dtype)
+            with torch.no_grad():
+                gen_od = florence_model.generate(**inputs_od, max_new_tokens=256, do_sample=False)
+            raw_od = florence_processor.tokenizer.decode(gen_od[0], skip_special_tokens=True)
+        except Exception as e:
+            print(f"Florence-2 2-pass note: {e}")
 
     try:
         img_gray = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
@@ -776,14 +777,26 @@ def score_candidates(candidates, text_prompt):
 
 
 def select_best_assets(all_candidates, game_plan):
-    ensure_clip_loaded()
+    if DEVICE == "cuda":
+        try:
+            ensure_clip_loaded()
+        except Exception as e:
+            print(f"CLIP load note: {e}")
+
     assets_prompts = game_plan.get("assets", {})
     best_assets = {}
 
     for asset_name, candidates in all_candidates.items():
-        prompt = assets_prompts.get(asset_name, f"16-bit pixel art {asset_name}")
-        best_img, _, _ = score_candidates(candidates, prompt)
-        best_assets[asset_name] = best_img.copy()
+        if DEVICE == "cuda" and clip_model is not None:
+            try:
+                prompt = assets_prompts.get(asset_name, f"16-bit pixel art {asset_name}")
+                best_img, _, _ = score_candidates(candidates, prompt)
+                best_assets[asset_name] = best_img.copy()
+            except Exception as e:
+                print(f"CLIP scoring note ({e}), selecting candidate 0...")
+                best_assets[asset_name] = candidates[0].copy()
+        else:
+            best_assets[asset_name] = candidates[0].copy()
 
     all_candidates.clear()
     gc.collect()
@@ -1374,8 +1387,12 @@ def run_full_pipeline(image_path, user_description="A fun game", job_id=None, ba
     job_dir = os.path.join(API_OUTPUT_DIR, job_id) if job_id else os.path.join(API_OUTPUT_DIR, str(uuid.uuid4())[:8])
     os.makedirs(job_dir, exist_ok=True)
 
-    set_job_status(job_id, "Analyzing level sketch with Florence-2...", 10, "Extracting layout grid, caption, and object detections")
-    ensure_florence_loaded()
+    set_job_status(job_id, "Analyzing level sketch with Florence-2 & Vision...", 10, "Extracting layout grid, caption, and object detections")
+    if DEVICE == "cuda":
+        try:
+            ensure_florence_loaded()
+        except Exception as e:
+            print(f"Florence load note: {e}")
     layout, florence_caption, florence_od = sketch_to_layout(image_path)
 
     set_job_status(job_id, "Generating AAA game plan with GPT-4o...", 25, f"Caption: '{florence_caption[:40]}...'")
