@@ -1166,10 +1166,11 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
     is_racing = "car" in genre_lower or "rac" in genre_lower or "vehicle" in genre_lower or "speed" in genre_lower or "car" in theme_lower or "racer" in theme_lower
     is_shooter = "shoot" in genre_lower or "top down" in genre_lower or "bullet" in genre_lower or "gun" in genre_lower or "laser" in theme_lower
 
-    clean_scene = compose_scene(best_assets, layout_json, game_plan, tile_size=tile_size, canvas_width=scene.width, canvas_height=scene.height, include_sprites=False)
-    base_img = clean_scene.convert("RGBA")
-    w, h = base_img.size
+    # Reuse the already-composed scene to avoid a second compose_scene() RAM spike.
+    # Pre-scale to viewport size BEFORE the frame loop so base_img.copy() is cheap (640x368 not 2048x1024).
     vp_w, vp_h = 640, 368
+    base_img = scene.convert("RGBA").resize((vp_w, vp_h), Image.BILINEAR)
+    w, h = vp_w, vp_h
     frames = []
 
     if is_fighting:
@@ -1183,7 +1184,7 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
         draw_clean.rectangle([0, int(h * 0.72), w, h], fill=(55, 50, 65, 255))
         draw_clean.rectangle([0, int(h * 0.72), w, int(h * 0.75)], fill=(115, 110, 125, 255))
 
-        total_frames = 240
+        total_frames = 30
         p1_base_x = int(w * 0.22)
         p2_base_x = int(w * 0.62)
         y_ground = int(h * 0.44)
@@ -1263,11 +1264,10 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
                 draw.text((w // 2 - 50, h // 2 - 15), "K. O.", fill=(255, 40, 40, 255))
                 draw.text((w // 2 - 80, h // 2 + 10), "P1 VICTORY!", fill=(255, 215, 0, 255))
 
-            frame = frame_img.crop((0, 0, w, h)).resize((vp_w, vp_h), Image.BILINEAR).convert("RGB")
-            frames.append(np.array(frame))
+            frames.append(np.array(frame_img.convert("RGB")))
 
     elif is_racing:
-        total_frames = 72
+        total_frames = 30
         player_sprite = best_assets.get("player")
         enemy_sprite = best_assets.get("enemy")
         car_p1 = remove_flat_background(player_sprite).resize((180, 90), Image.NEAREST).convert("RGBA") if player_sprite else None
@@ -1309,11 +1309,11 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
                 draw.rectangle([w // 2 - 140, 80, w // 2 + 140, 140], outline=(0, 255, 200, 255), width=3)
                 draw.text((w // 2 - 100, 98), "FINISH! 1ST PLACE", fill=(0, 255, 240, 255))
 
-            frame = frame_img.crop((0, 0, w, h)).resize((vp_w, vp_h), Image.BILINEAR).convert("RGB")
+            frame = frame_img.convert("RGB")
             frames.append(np.array(frame))
 
     else:
-        total_frames = 72
+        total_frames = 30
         platforms = layout_json.get("platforms", [[0, 11]])
         all_x = [p[0] for p in platforms]
         all_y = [p[1] for p in platforms]
@@ -1370,8 +1370,8 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             cam_x = max(0, min(max(0, w - vp_w), px_scr + sprite_w // 2 - vp_w // 2))
             cam_y = max(0, min(max(0, h - vp_h), py_scr + sprite_h // 2 - vp_h // 2))
 
-            cropped = frame_img.crop((cam_x, cam_y, cam_x + vp_w, cam_y + vp_h)).convert("RGB")
-            frames.append(np.array(cropped))
+            # Since base_img is already at viewport size, no crop needed
+            frames.append(np.array(frame_img.convert("RGB")))
 
     try:
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
