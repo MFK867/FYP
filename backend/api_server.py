@@ -16,16 +16,11 @@ from concurrent.futures import ThreadPoolExecutor
 import zipfile
 import cv2
 import numpy as np
-import torch
 from PIL import Image, ImageDraw, ImageFilter
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
-from transformers import AutoProcessor, AutoModelForCausalLM
-from peft import PeftModel
-from diffusers import StableDiffusionXLPipeline, DPMSolverMultistepScheduler
-import open_clip
 from openai import OpenAI
 
 from prompt_config import (
@@ -73,11 +68,14 @@ def get_openai_client():
 API_OUTPUT_DIR = os.environ.get("API_OUTPUT_DIR", "./api_output")
 os.makedirs(API_OUTPUT_DIR, exist_ok=True)
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-if DEVICE == "cpu":
-    print(
-        "WARNING: no GPU detected. Florence-2 and SDXL will be slow on CPU. Use a GPU hardware tier for production."
-    )
+def get_device():
+    try:
+        import torch
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except Exception:
+        return "cpu"
+
+DEVICE = os.environ.get("DEVICE", get_device())
 
 executor = ThreadPoolExecutor(max_workers=2)
 JOB_STATUS = {}
@@ -110,6 +108,9 @@ clip_tokenizer = None
 
 def ensure_florence_loaded():
     global florence_processor, florence_base, florence_model, sdxl_pipe
+    import torch
+    from transformers import AutoProcessor, AutoModelForCausalLM
+    from peft import PeftModel
 
     if florence_model is not None:
         return
@@ -118,7 +119,8 @@ def ensure_florence_loaded():
         print("Freeing SDXL from memory before loading Florence-2...")
         sdxl_pipe = None
         gc.collect()
-        torch.cuda.empty_cache()
+        if DEVICE == "cuda":
+            torch.cuda.empty_cache()
 
     print("Loading Florence-2...")
     florence_processor = AutoProcessor.from_pretrained(MODEL_ID, trust_remote_code=True)
@@ -139,6 +141,8 @@ def ensure_florence_loaded():
 
 
 def _load_sdxl_pipeline():
+    import torch
+    from diffusers import StableDiffusionXLPipeline, DPMSolverMultistepScheduler
     print("Loading SDXL...")
     pipe = StableDiffusionXLPipeline.from_pretrained(
         "stabilityai/stable-diffusion-xl-base-1.0",
@@ -167,6 +171,7 @@ def _load_sdxl_pipeline():
 
 def ensure_sdxl_loaded():
     global sdxl_pipe, florence_model, florence_base
+    import torch
 
     if sdxl_pipe is not None:
         return
@@ -176,13 +181,15 @@ def ensure_sdxl_loaded():
         florence_model = None
         florence_base = None
         gc.collect()
-        torch.cuda.empty_cache()
+        if DEVICE == "cuda":
+            torch.cuda.empty_cache()
 
     sdxl_pipe = _load_sdxl_pipeline()
 
 
 def ensure_clip_loaded():
     global clip_model, clip_preprocess, clip_tokenizer
+    import open_clip
     if clip_model is not None:
         return
     print("Loading CLIP model...")
@@ -197,6 +204,7 @@ def ensure_clip_loaded():
 # --------------------------------------------------------------------------
 
 def sketch_to_layout(image_path):
+    import torch
     raw_caption = "A hand-drawn game level sketch"
     raw_od = ""
     try:
@@ -652,6 +660,7 @@ def generate_procedural_sprite(asset_name, prompt, width=512, height=512, seed=4
 
 
 def generate_asset(prompt, width=512, height=512, num_images=3, seed=42, genre="default"):
+    import torch
     full_prompt = build_full_prompt(prompt, genre=genre)
     negative = NEGATIVE_PROMPT_BLOCK
 
@@ -748,6 +757,7 @@ def generate_all_assets(game_plan, save_dir, job_id=None):
 # --------------------------------------------------------------------------
 
 def score_candidates(candidates, text_prompt):
+    import torch
     text_tokens = clip_tokenizer([text_prompt])
     with torch.no_grad():
         text_features = clip_model.encode_text(text_tokens)
@@ -1537,4 +1547,5 @@ def favicon():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    port = int(os.environ.get("PORT", 7860))
+    uvicorn.run(app, host="0.0.0.0", port=port)
