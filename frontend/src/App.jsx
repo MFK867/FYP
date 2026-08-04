@@ -397,8 +397,14 @@ export default function App() {
               </a>
             </div>
             <div className="result-card">
-              <h3>Animated Level Preview (H.264 Video)</h3>
-              <video src={`${API_URL}${result.urls.preview}`} controls autoPlay loop />
+              <h3>🎬 Animated Level Preview (H.264 Video)</h3>
+              <video
+                src={`${API_URL}${result.urls.preview}`}
+                controls
+                autoPlay
+                loop
+                style={{ width: '100%', borderRadius: '8px', display: 'block', background: '#000' }}
+              />
               <a
                 href={`${API_URL}${result.urls.preview}`}
                 download="preview.mp4"
@@ -419,6 +425,10 @@ export default function App() {
                   displayName = 'Rival Car';
                 } else if (assetName === 'player' && isRacingGenre) {
                   displayName = 'Player Car';
+                } else if (assetName === 'platform_tile' && isRacingGenre) {
+                  displayName = 'Road Tile';
+                } else if (assetName === 'background' && isRacingGenre) {
+                  displayName = 'City BG';
                 }
                 return (
                   <div key={assetName} style={{ background: '#0f172a', padding: '12px', borderRadius: '8px', border: '1px solid #334155', textAlign: 'center' }}>
