@@ -419,117 +419,309 @@ def plan_game(layout_json, user_description="A fun game", florence_caption="", f
 # --------------------------------------------------------------------------
 
 def draw_parallax_sky(width=1024, height=512, game_plan=None):
+    import random as _rnd
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
     genre_lower = (game_plan.get("genre", "") if game_plan else "").lower()
     theme_lower = (game_plan.get("theme", "") if game_plan else "").lower()
     is_car = "rac" in genre_lower or "car" in genre_lower or "vehicle" in theme_lower or "racer" in theme_lower
+    is_fighting = "fight" in genre_lower or "arena" in genre_lower or "beat" in genre_lower or "brawl" in genre_lower or "fight" in theme_lower
     is_shooter = "shoot" in genre_lower or "top down" in genre_lower
 
     if is_car:
-        # ── Racing / City Night Skyline Background ──────────────────────────
-        # Night sky gradient
+        # ═══ RACING: Cyberpunk Night City 3-Layer Parallax ═══════════════
+        # Deep indigo-to-purple sky gradient
         for y in range(height):
             t = y / height
-            r = int(8 + t * 18)
-            g = int(10 + t * 22)
-            b = int(30 + t * 35)
+            r = int(5 + t * 20)
+            g = int(2 + t * 12)
+            b = int(18 + t * 50)
             draw.line([0, y, width, y], fill=(r, g, b, 255))
 
-        # Moon
-        draw.ellipse([width - 120, 20, width - 60, 80], fill=(240, 235, 200, 255))
-        draw.ellipse([width - 108, 26, width - 66, 74], fill=(8, 12, 30, 255))
+        # Glowing crescent moon with soft halo
+        mx, my = int(width * 0.88), int(height * 0.08)
+        for ring in range(6, 0, -1):
+            alpha = int(15 + ring * 5)
+            draw.ellipse([mx - 40 - ring*6, my - 40 - ring*6, mx + 40 + ring*6, my + 40 + ring*6],
+                         fill=(60, 50, 90, alpha))
+        draw.ellipse([mx - 30, my - 30, mx + 30, my + 30], fill=(255, 248, 220, 255))
+        draw.ellipse([mx - 18, my - 34, mx + 22, my + 26], fill=(5, 2, 18, 255))
 
-        # Starfield
-        import random as _rnd
-        _rnd.seed(77)
-        for _ in range(60):
+        # Stars with twinkling variety
+        _rnd.seed(777)
+        for _ in range(100):
             sx = _rnd.randint(0, width)
             sy = _rnd.randint(0, int(height * 0.55))
-            br = _rnd.randint(160, 255)
-            draw.rectangle([sx, sy, sx + 1, sy + 1], fill=(br, br, br, 255))
+            br = _rnd.randint(140, 255)
+            sz = _rnd.choice([1, 1, 1, 2, 2])
+            color = _rnd.choice([(br, br, br, 255), (br, br-20, br-60, 255), (br-40, br-20, br, 255)])
+            draw.rectangle([sx, sy, sx + sz, sy + sz], fill=color)
 
-        # Distant city buildings silhouette (dark purple-blue)
-        _rnd.seed(42)
-        building_colors = [(20, 18, 45, 255), (28, 22, 55, 255), (15, 14, 38, 255)]
-        x = 0
-        while x < width:
-            bw = _rnd.randint(40, 90)
-            bh = _rnd.randint(int(height * 0.25), int(height * 0.60))
-            by = height - bh
-            col = _rnd.choice(building_colors)
-            draw.rectangle([x, by, x + bw - 2, height], fill=col)
-            # Windows (lit yellow)
-            for wy in range(by + 8, height - 20, 18):
-                for wx in range(x + 6, x + bw - 10, 14):
-                    if _rnd.random() > 0.45:
-                        draw.rectangle([wx, wy, wx + 6, wy + 8], fill=(255, 210, 80, 255))
-            # Neon roof strip
-            neon = _rnd.choice([(0, 220, 255, 255), (255, 60, 180, 255), (60, 255, 180, 255)])
-            draw.line([x, by, x + bw - 2, by], fill=neon, width=3)
-            x += bw + _rnd.randint(2, 8)
+        # ── Layer 1: Far distant buildings (small, dark) ──
+        _rnd.seed(101)
+        bx = 0
+        while bx < width:
+            bw = _rnd.randint(30, 65)
+            bh = _rnd.randint(int(height * 0.15), int(height * 0.35))
+            by = int(height * 0.68) - bh
+            shade = _rnd.randint(12, 22)
+            draw.rectangle([bx, by, bx + bw - 2, int(height * 0.68)], fill=(shade, shade - 2, shade + 15, 255))
+            # Tiny dim windows
+            for wy in range(by + 6, int(height * 0.68) - 6, 12):
+                for wx in range(bx + 4, bx + bw - 6, 10):
+                    if _rnd.random() > 0.6:
+                        wc = _rnd.choice([(80, 70, 40, 255), (40, 60, 80, 255)])
+                        draw.rectangle([wx, wy, wx + 3, wy + 4], fill=wc)
+            bx += bw + _rnd.randint(1, 6)
 
-        # Road strip at bottom
+        # ── Layer 2: Mid-range buildings (medium, with neon) ──
+        _rnd.seed(202)
+        neon_colors = [(0, 230, 255), (255, 50, 180), (50, 255, 160), (255, 100, 40), (180, 80, 255)]
+        bx = _rnd.randint(0, 20)
+        while bx < width:
+            bw = _rnd.randint(45, 100)
+            bh = _rnd.randint(int(height * 0.25), int(height * 0.50))
+            by = int(height * 0.72) - bh
+            shade = _rnd.randint(18, 32)
+            draw.rectangle([bx, by, bx + bw - 3, int(height * 0.72)], fill=(shade, shade - 4, shade + 20, 255))
+            # Lit windows (warm yellow/orange/cyan)
+            for wy in range(by + 8, int(height * 0.72) - 8, 14):
+                for wx in range(bx + 5, bx + bw - 8, 12):
+                    if _rnd.random() > 0.35:
+                        wc = _rnd.choice([(255, 215, 70, 255), (255, 180, 50, 255), (60, 200, 255, 255), (255, 130, 80, 255)])
+                        draw.rectangle([wx, wy, wx + 5, wy + 6], fill=wc)
+            # Neon roof accent
+            nc = _rnd.choice(neon_colors)
+            draw.line([bx, by, bx + bw - 3, by], fill=(*nc, 255), width=3)
+            # Neon sign on some buildings
+            if _rnd.random() > 0.5 and bw > 55:
+                sign_y = by + int(bh * 0.3)
+                sign_c = _rnd.choice(neon_colors)
+                draw.rectangle([bx + 8, sign_y, bx + bw - 10, sign_y + 14], fill=(*sign_c, 180))
+                draw.rectangle([bx + 10, sign_y + 2, bx + bw - 12, sign_y + 12], fill=(10, 8, 25, 220))
+            # Antenna / tower on tall buildings
+            if bh > height * 0.35:
+                ax = bx + bw // 2
+                draw.line([ax, by - 18, ax, by], fill=(60, 55, 80, 255), width=2)
+                draw.rectangle([ax - 2, by - 20, ax + 2, by - 16], fill=(255, 30, 30, 255))
+            bx += bw + _rnd.randint(3, 12)
+
+        # ── Road surface at bottom ──
         road_top = int(height * 0.72)
-        draw.rectangle([0, road_top, width, height], fill=(38, 38, 48, 255))
-        # Center dashed yellow line
+        # Asphalt gradient (lighter at top edge, darker at bottom)
+        for y in range(road_top, height):
+            t = (y - road_top) / max(1, height - road_top)
+            shade = int(42 - t * 12)
+            draw.line([0, y, width, y], fill=(shade, shade, shade + 5, 255))
+        # White edge line at top of road
+        draw.rectangle([0, road_top, width, road_top + 3], fill=(180, 185, 195, 255))
+        # Dashed yellow center line
         mid_y = road_top + (height - road_top) // 2
-        for dx in range(0, width, 50):
-            draw.rectangle([dx, mid_y - 3, dx + 28, mid_y + 3], fill=(255, 210, 30, 255))
-        # Side kerb
-        draw.rectangle([0, road_top, width, road_top + 6], fill=(200, 200, 210, 255))
+        for dx in range(0, width, 48):
+            draw.rectangle([dx, mid_y - 2, dx + 26, mid_y + 2], fill=(255, 215, 30, 255))
+        # Bottom kerb
+        draw.rectangle([0, height - 5, width, height], fill=(25, 22, 35, 255))
 
-    elif is_shooter:
-        # ── Top-Down Space / Sci-Fi Background ──────────────────────────────
+    elif is_fighting:
+        # ═══ FIGHTING: Martial Arts Dojo Arena ═══════════════════════════
+        # Deep crimson-to-dark gradient wall
         for y in range(height):
-            draw.line([0, y, width, y], fill=(5, 5, 18, 255))
-        import random as _rnd
-        _rnd.seed(99)
-        for _ in range(120):
-            sx = _rnd.randint(0, width)
-            sy = _rnd.randint(0, height)
-            br = _rnd.randint(120, 255)
-            sz = _rnd.choice([1, 1, 1, 2])
-            draw.rectangle([sx, sy, sx + sz, sy + sz], fill=(br, br, br, 255))
-        # Nebula clouds
-        for _ in range(5):
-            nx = _rnd.randint(0, width)
-            ny = _rnd.randint(0, height)
-            nr = _rnd.randint(60, 140)
-            nc = _rnd.choice([(60, 0, 90, 60), (0, 50, 90, 60), (80, 20, 0, 60)])
-            draw.ellipse([nx - nr, ny - nr // 2, nx + nr, ny + nr // 2], fill=nc)
-
-    else:
-        # ── Default: Medieval Castle Stone Wall ─────────────────────────────
-        for y in range(height):
-            r = int(28 + (y / height) * 25)
-            g = int(24 + (y / height) * 30)
-            b = int(45 + (y / height) * 40)
+            t = y / height
+            r = int(55 + t * 30)
+            g = int(12 + t * 15)
+            b = int(15 + t * 20)
             draw.line([0, y, width, y], fill=(r, g, b, 255))
 
-        block_h = 32
-        block_w = 64
-        for r_idx, y in enumerate(range(0, height, block_h)):
-            offset = (block_w // 2) if (r_idx % 2 == 1) else 0
-            for x in range(-block_w + offset, width + block_w, block_w):
-                fill_c = (90 + (x % 15), 85 + (y % 12), 80 + (x % 10), 255)
-                draw.rectangle([x, y, x + block_w - 2, y + block_h - 2], fill=fill_c)
-                draw.line([x, y, x + block_w - 2, y], fill=(130, 125, 120, 255))
-                draw.line([x, y + block_h - 2, x + block_w - 2, y + block_h - 2], fill=(45, 40, 38, 255))
+        # Wooden floor boards at bottom
+        floor_top = int(height * 0.72)
+        for y in range(floor_top, height):
+            t = (y - floor_top) / max(1, height - floor_top)
+            r = int(85 + t * 25)
+            g = int(55 + t * 15)
+            b = int(25 + t * 10)
+            draw.line([0, y, width, y], fill=(r, g, b, 255))
+        # Plank lines
+        for px_off in range(0, width, 80):
+            draw.line([px_off, floor_top, px_off, height], fill=(55, 35, 18, 255), width=1)
+        draw.line([0, floor_top, width, floor_top], fill=(40, 25, 12, 255), width=3)
 
-        arch_cx, arch_cy = int(width * 0.85), int(height * 0.65)
-        draw.ellipse([arch_cx - 100, arch_cy - 120, arch_cx + 100, arch_cy + 120], fill=(25, 20, 18, 255))
-        draw.rectangle([arch_cx - 100, arch_cy, arch_cx + 100, height], fill=(25, 20, 18, 255))
-        draw.rectangle([arch_cx - 80, arch_cy - 60, arch_cx + 80, height], fill=(110, 65, 30, 255))
-        for dx in range(-70, 80, 20):
-            draw.line([arch_cx + dx, arch_cy - 50, arch_cx + dx, height], fill=(70, 40, 18, 255), width=2)
-        draw.ellipse([arch_cx + 40, arch_cy + 40, arch_cx + 56, arch_cy + 56], fill=(210, 170, 40, 255))
-        tx, ty = int(width * 0.15), int(height * 0.25)
-        draw.rectangle([tx - 12, ty, tx + 12, ty + 40], fill=(40, 38, 45, 255))
-        draw.polygon([(tx - 25, ty), (tx + 25, ty), (tx, ty + 25)], fill=(65, 60, 70, 255))
-        draw.ellipse([tx - 18, ty - 25, tx + 18, ty + 5], fill=(255, 140, 20, 255))
-        draw.ellipse([tx - 10, ty - 20, tx + 10, ty], fill=(255, 230, 80, 255))
+        # Wooden pillars on left and right
+        for px_pos in [int(width * 0.05), int(width * 0.92)]:
+            pw = int(width * 0.04)
+            draw.rectangle([px_pos, 0, px_pos + pw, height], fill=(70, 40, 20, 255))
+            draw.rectangle([px_pos + 2, 0, px_pos + pw // 3, height], fill=(95, 58, 28, 255))
+            # Capital at top
+            draw.rectangle([px_pos - 8, 0, px_pos + pw + 8, 20], fill=(85, 50, 22, 255))
+            draw.rectangle([px_pos - 4, 20, px_pos + pw + 4, 28], fill=(75, 42, 18, 255))
+
+        # Gold circular dragon medallion in center
+        cx, cy = width // 2, int(height * 0.32)
+        rad = int(min(width, height) * 0.14)
+        # Outer gold ring
+        for ring in range(3):
+            draw.ellipse([cx - rad - ring, cy - rad - ring, cx + rad + ring, cy + rad + ring],
+                         outline=(210, 170, 40, 255), width=3)
+        # Inner dark circle
+        draw.ellipse([cx - rad + 6, cy - rad + 6, cx + rad - 6, cy + rad - 6], fill=(35, 12, 12, 255))
+        # Dragon pattern (simplified circular dragon)
+        _rnd.seed(88)
+        for angle_step in range(0, 360, 15):
+            a = math.radians(angle_step)
+            ir = rad * 0.35 + math.sin(a * 3) * rad * 0.12
+            ex = cx + int(math.cos(a) * ir)
+            ey = cy + int(math.sin(a) * ir)
+            draw.ellipse([ex - 4, ey - 4, ex + 4, ey + 4], fill=(220, 180, 50, 255))
+        # Central character symbol
+        draw.rectangle([cx - 12, cy - 16, cx + 12, cy + 16], fill=(220, 180, 50, 255))
+        draw.rectangle([cx - 8, cy - 12, cx + 8, cy + 12], fill=(35, 12, 12, 255))
+        draw.line([cx - 6, cy, cx + 6, cy], fill=(220, 180, 50, 255), width=2)
+        draw.line([cx, cy - 8, cx, cy + 8], fill=(220, 180, 50, 255), width=2)
+
+        # Hanging red lanterns
+        _rnd.seed(55)
+        for lx in [int(width * 0.20), int(width * 0.40), int(width * 0.60), int(width * 0.80)]:
+            ly = int(height * 0.06)
+            # String
+            draw.line([lx, 0, lx, ly], fill=(60, 30, 15, 255), width=2)
+            # Lantern body
+            draw.ellipse([lx - 16, ly, lx + 16, ly + 40], fill=(210, 30, 25, 255))
+            draw.ellipse([lx - 12, ly + 4, lx + 12, ly + 36], fill=(240, 60, 45, 255))
+            # Gold rim
+            draw.rectangle([lx - 14, ly + 2, lx + 14, ly + 6], fill=(220, 180, 50, 255))
+            draw.rectangle([lx - 14, ly + 34, lx + 14, ly + 38], fill=(220, 180, 50, 255))
+            # Inner glow
+            draw.ellipse([lx - 6, ly + 12, lx + 6, ly + 28], fill=(255, 200, 80, 200))
+            # Tassel
+            draw.line([lx, ly + 40, lx, ly + 52], fill=(210, 30, 25, 255), width=2)
+            draw.polygon([(lx - 4, ly + 52), (lx + 4, ly + 52), (lx, ly + 60)], fill=(180, 25, 20, 255))
+
+        # Decorative wall scrolls on sides
+        for sx_pos in [int(width * 0.14), int(width * 0.82)]:
+            sw, sh = 30, int(height * 0.35)
+            sy = int(height * 0.15)
+            draw.rectangle([sx_pos, sy, sx_pos + sw, sy + sh], fill=(240, 230, 200, 255))
+            draw.rectangle([sx_pos + 2, sy + 2, sx_pos + sw - 2, sy + sh - 2], fill=(250, 242, 220, 255))
+            # Brush stroke pattern
+            for sdy in range(10, sh - 10, 16):
+                draw.line([sx_pos + 8, sy + sdy, sx_pos + sw - 8, sy + sdy + 8], fill=(30, 20, 15, 180), width=2)
+
+    elif is_shooter:
+        # ═══ SHOOTER: Deep Space Nebula Field ════════════════════════════
+        # Pure black base
+        draw.rectangle([0, 0, width, height], fill=(3, 2, 10, 255))
+
+        # Nebula gas clouds (layered, soft colored ellipses)
+        _rnd.seed(303)
+        nebula_colors = [(80, 20, 120), (20, 60, 130), (120, 30, 60), (30, 80, 60), (100, 40, 90)]
+        for _ in range(12):
+            nx = _rnd.randint(-100, width + 100)
+            ny = _rnd.randint(-50, height + 50)
+            nw = _rnd.randint(100, 300)
+            nh = _rnd.randint(60, 180)
+            nc = _rnd.choice(nebula_colors)
+            for layer in range(4, 0, -1):
+                alpha = int(15 + layer * 8)
+                expand = layer * 20
+                draw.ellipse([nx - expand, ny - expand, nx + nw + expand, ny + nh + expand],
+                             fill=(*nc, alpha))
+
+        # Dense starfield with varying sizes and colors
+        _rnd.seed(404)
+        for _ in range(250):
+            sx = _rnd.randint(0, width)
+            sy = _rnd.randint(0, height)
+            br = _rnd.randint(100, 255)
+            sz = _rnd.choice([1, 1, 1, 1, 2, 2, 3])
+            sc = _rnd.choice([(br, br, br), (br, br - 30, br - 60), (br - 50, br - 20, br), (br, br - 10, br - 40)])
+            draw.rectangle([sx, sy, sx + sz - 1, sy + sz - 1], fill=(*sc, 255))
+
+        # Distant planet with ring
+        px_c, py_c = int(width * 0.25), int(height * 0.30)
+        pr = 45
+        draw.ellipse([px_c - pr, py_c - pr, px_c + pr, py_c + pr], fill=(40, 55, 80, 255))
+        draw.ellipse([px_c - pr + 8, py_c - pr + 5, px_c + pr - 15, py_c + pr - 8], fill=(55, 75, 100, 255))
+        # Ring
+        draw.arc([px_c - pr * 2, py_c - 12, px_c + pr * 2, py_c + 12], 0, 180, fill=(120, 140, 170, 200), width=3)
+
+    else:
+        # ═══ DEFAULT: Enchanted Twilight Forest with Mountains ════════════
+        # Twilight sky gradient (deep blue to purple to warm horizon)
+        for y in range(height):
+            t = y / height
+            r = int(15 + t * 60)
+            g = int(10 + t * 35)
+            b = int(45 + t * 25)
+            if t > 0.4:
+                r = int(15 + (t - 0.4) * 120)
+                g = int(10 + (t - 0.4) * 50)
+            draw.line([0, y, width, y], fill=(min(r, 80), min(g, 50), b, 255))
+
+        # Stars in the upper sky
+        _rnd.seed(500)
+        for _ in range(60):
+            sx = _rnd.randint(0, width)
+            sy = _rnd.randint(0, int(height * 0.4))
+            br = _rnd.randint(160, 255)
+            draw.rectangle([sx, sy, sx + 1, sy + 1], fill=(br, br, br - 20, 255))
+
+        # Northern lights / aurora effect
+        for band in range(3):
+            _rnd.seed(600 + band)
+            by_base = int(height * (0.12 + band * 0.08))
+            aurora_c = [(30, 180, 120, 35), (60, 140, 200, 30), (120, 60, 180, 25)][band]
+            for seg in range(0, width, 8):
+                wave = int(math.sin(seg * 0.015 + band) * 20)
+                draw.rectangle([seg, by_base + wave, seg + 7, by_base + wave + 15], fill=aurora_c)
+
+        # Distant mountain range (dark silhouette)
+        mtn_base = int(height * 0.50)
+        _rnd.seed(700)
+        points = [(0, mtn_base)]
+        x_pos = 0
+        while x_pos < width + 50:
+            peak_h = _rnd.randint(int(height * 0.22), int(height * 0.42))
+            points.append((x_pos, peak_h))
+            x_pos += _rnd.randint(60, 140)
+        points.append((width, mtn_base))
+        points.append((width, height))
+        points.append((0, height))
+        draw.polygon(points, fill=(20, 18, 35, 255))
+
+        # Closer mountain layer (slightly lighter)
+        mtn_base2 = int(height * 0.58)
+        _rnd.seed(710)
+        points2 = [(0, mtn_base2)]
+        x_pos = 0
+        while x_pos < width + 50:
+            peak_h = _rnd.randint(int(height * 0.35), int(height * 0.52))
+            points2.append((x_pos, peak_h))
+            x_pos += _rnd.randint(50, 120)
+        points2.append((width, mtn_base2))
+        points2.append((width, height))
+        points2.append((0, height))
+        draw.polygon(points2, fill=(28, 25, 42, 255))
+
+        # Pine tree silhouettes
+        tree_base = int(height * 0.62)
+        _rnd.seed(800)
+        for _ in range(25):
+            tx = _rnd.randint(0, width)
+            th = _rnd.randint(40, 90)
+            tw = _rnd.randint(20, 40)
+            # Trunk
+            draw.rectangle([tx - 3, tree_base - 5, tx + 3, tree_base + 10], fill=(18, 15, 25, 255))
+            # Foliage triangles
+            for layer in range(3):
+                ly = tree_base - 5 - layer * int(th * 0.3)
+                lw = tw - layer * 8
+                draw.polygon([(tx - lw, ly), (tx + lw, ly), (tx, ly - int(th * 0.35))], fill=(15, 18, 28, 255))
+
+        # Ground with grass tufts
+        draw.rectangle([0, tree_base + 5, width, height], fill=(22, 28, 18, 255))
+        for gx in range(0, width, 6):
+            gh = _rnd.randint(3, 10)
+            draw.line([gx, tree_base + 5, gx, tree_base + 5 - gh], fill=(18, 35, 15, 255), width=2)
 
     return img
 
@@ -982,17 +1174,12 @@ def compose_scene(best_assets, layout_json, game_plan, tile_size=32, canvas_widt
     is_puzzle = "puzzl" in genre_lower or "maze" in genre_lower or "logic" in genre_lower
 
     if is_fighting:
-        canvas = Image.new("RGBA", (canvas_width, canvas_height), (20, 18, 30, 255))
+        bg = best_assets.get("background")
+        if bg:
+            canvas = bg.resize((canvas_width, canvas_height), Image.LANCZOS).convert("RGBA")
+        else:
+            canvas = draw_parallax_sky(canvas_width, canvas_height, game_plan)
         draw = ImageDraw.Draw(canvas)
-        
-        draw.rectangle([0, 0, canvas_width, canvas_height], fill=(25, 20, 40, 255))
-        for b in range(0, canvas_width, 120):
-            draw.rectangle([b, int(canvas_height * 0.18), b + 95, canvas_height], fill=(35, 30, 55, 255))
-            draw.rectangle([b + 15, int(canvas_height * 0.28), b + 45, int(canvas_height * 0.42)], fill=(255, 180, 40, 200))
-            draw.rectangle([b + 55, int(canvas_height * 0.28), b + 80, int(canvas_height * 0.42)], fill=(0, 220, 255, 200))
-
-        draw.rectangle([0, int(canvas_height * 0.72), canvas_width, canvas_height], fill=(55, 50, 65, 255))
-        draw.rectangle([0, int(canvas_height * 0.72), canvas_width, int(canvas_height * 0.75)], fill=(115, 110, 125, 255))
 
         if include_sprites:
             player_sprite = best_assets.get("player")
@@ -1010,17 +1197,12 @@ def compose_scene(best_assets, layout_json, game_plan, tile_size=32, canvas_widt
         return canvas.convert("RGB")
 
     elif is_racing:
-        canvas = Image.new("RGBA", (canvas_width, canvas_height), (15, 10, 35, 255))
+        bg = best_assets.get("background")
+        if bg:
+            canvas = bg.resize((canvas_width, canvas_height), Image.LANCZOS).convert("RGBA")
+        else:
+            canvas = draw_parallax_sky(canvas_width, canvas_height, game_plan)
         draw = ImageDraw.Draw(canvas)
-
-        for b in range(0, canvas_width, 90):
-            bh = random.randint(int(canvas_height * 0.35), int(canvas_height * 0.7))
-            draw.rectangle([b, canvas_height - bh, b + 75, canvas_height], fill=(30, 20, 60, 255))
-            draw.rectangle([b + 12, canvas_height - bh + 25, b + 60, canvas_height - bh + 45], fill=(0, 230, 255, 200))
-
-        draw.rectangle([0, int(canvas_height * 0.7), canvas_width, canvas_height], fill=(40, 40, 50, 255))
-        for x in range(0, canvas_width, 60):
-            draw.rectangle([x, int(canvas_height * 0.84), x + 35, int(canvas_height * 0.87)], fill=(250, 210, 40, 255))
 
         if include_sprites:
             player_sprite = best_assets.get("player")
