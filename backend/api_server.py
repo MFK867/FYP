@@ -1267,7 +1267,7 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             frames.append(np.array(frame))
 
     elif is_racing:
-        total_frames = 240
+        total_frames = 72
         player_sprite = best_assets.get("player")
         enemy_sprite = best_assets.get("enemy")
         car_p1 = remove_flat_background(player_sprite).resize((180, 90), Image.NEAREST).convert("RGBA") if player_sprite else None
@@ -1313,7 +1313,7 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             frames.append(np.array(frame))
 
     else:
-        total_frames = 300
+        total_frames = 72
         platforms = layout_json.get("platforms", [[0, 11]])
         all_x = [p[0] for p in platforms]
         all_y = [p[1] for p in platforms]
