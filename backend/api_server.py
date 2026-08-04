@@ -1260,7 +1260,7 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
         draw_clean.rectangle([0, int(h * 0.72), w, h], fill=(55, 50, 65, 255))
         draw_clean.rectangle([0, int(h * 0.72), w, int(h * 0.75)], fill=(115, 110, 125, 255))
 
-        total_frames = 30
+        total_frames = 150
         p1_base_x = int(w * 0.22)
         p2_base_x = int(w * 0.62)
         y_ground = int(h * 0.44)
@@ -1285,25 +1285,26 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             fireball_x = 0
             ko_text = False
 
-            if i < 35:
-                progress = i / 35.0
+            v_i = int(i * (240.0 / 150.0))
+            if v_i < 35:
+                progress = v_i / 35.0
                 p1_x = p1_base_x + int(progress * 60)
                 p2_x = p2_base_x - int(progress * 40)
-            elif i < 75:
-                p1_x = p1_base_x + 60 + int(math.sin((i - 35) * 0.5) * 15)
+            elif v_i < 75:
+                p1_x = p1_base_x + 60 + int(math.sin((v_i - 35) * 0.5) * 15)
                 p2_x = p2_base_x - 40
-                p2_hp = max(60, 100 - int((i - 35) * 1.0))
-                if (i % 8) < 4:
+                p2_hp = max(60, 100 - int((v_i - 35) * 1.0))
+                if (v_i % 8) < 4:
                     show_hit_spark = True
-            elif i < 120:
+            elif v_i < 120:
                 p1_x = p1_base_x + 50
                 p2_x = p2_base_x - 30
                 p2_hp = 60
-                p1_hp = max(85, 100 - int((i - 75) * 0.35))
+                p1_hp = max(85, 100 - int((v_i - 75) * 0.35))
                 show_fireball = True
-                fireball_x = p2_x - int((i - 75) * 6)
-            elif i < 170:
-                t = (i - 120) / 50.0
+                fireball_x = p2_x - int((v_i - 75) * 6)
+            elif v_i < 170:
+                t = (v_i - 120) / 50.0
                 p1_x = p1_base_x + 50 + int(t * 120)
                 p1_y = y_ground - int(math.sin(t * math.pi) * 90)
                 p2_hp = max(0, 60 - int(t * 70))
@@ -1343,7 +1344,7 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             frames.append(np.array(frame_img.convert("RGB")))
 
     elif is_racing:
-        total_frames = 30
+        total_frames = 150
         player_sprite = best_assets.get("player")
         enemy_sprite = best_assets.get("enemy")
         car_p1 = remove_flat_background(player_sprite).resize((180, 90), Image.NEAREST).convert("RGBA") if player_sprite else None
@@ -1389,7 +1390,7 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             frames.append(np.array(frame))
 
     else:
-        total_frames = 30
+        total_frames = 150
         platforms = layout_json.get("platforms", [[0, 11]])
         all_x = [p[0] for p in platforms]
         all_y = [p[1] for p in platforms]
@@ -1449,20 +1450,15 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             # Since base_img is already at viewport size, no crop needed
             frames.append(np.array(frame_img.convert("RGB")))
 
-    # Save as animated GIF using pure PIL — universally browser-compatible, zero codec dependency.
+    # Save as H.264 MP4 using imageio and ffmpeg-python wheel
     try:
-        gif_path = output_path.replace(".mp4", ".gif")
-        pil_frames = [Image.fromarray(f).convert("P", dither=Image.FLOYDSTEINBERG) for f in frames]
-        pil_frames[0].save(
-            gif_path,
-            save_all=True,
-            append_images=pil_frames[1:],
-            loop=0,
-            duration=int(1000 / fps),
-            optimize=True,
-        )
+        import imageio
+        writer = imageio.get_writer(output_path, fps=20, codec="libx264", quality=8)
+        for frame in frames:
+            writer.append_data(frame)
+        writer.close()
     except Exception as e:
-        print(f"GIF render note: {e}")
+        print(f"Video render note: {e}")
 
 # --------------------------------------------------------------------------
 # Pipeline Execution Endpoint Engine
@@ -1534,7 +1530,7 @@ def run_full_pipeline(image_path, user_description="A fun game", job_id=None, ba
         "playability": playability_info,
         "urls": {
             "scene": f"/files/{job_id}/scene.png?v={ts}",
-            "preview": f"/files/{job_id}/preview.gif?v={ts}",
+            "preview": f"/files/{job_id}/preview.mp4?v={ts}",
         },
         "zip_url": f"/files/{job_id}/{zip_filename}?v={ts}"
     }
