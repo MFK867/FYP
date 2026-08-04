@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-multipart
+torch
+transformers==4.49.0
+peft
+diffusers
+open-clip-torch
+opencv-python-headless
+pillow
+numpy<2.0.0
+openai
+ftfy
