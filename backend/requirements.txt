@@ -11,3 +11,5 @@ pillow
 numpy<2.0.0
 openai
 ftfy
+imageio
+imageio-ffmpeg

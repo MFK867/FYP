@@ -1169,7 +1169,7 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
     clean_scene = compose_scene(best_assets, layout_json, game_plan, tile_size=tile_size, canvas_width=scene.width, canvas_height=scene.height, include_sprites=False)
     base_img = clean_scene.convert("RGBA")
     w, h = base_img.size
-    vp_w, vp_h = 640, 360
+    vp_w, vp_h = 640, 368
     frames = []
 
     if is_fighting:
