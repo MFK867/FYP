@@ -1373,11 +1373,15 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             cropped = frame_img.crop((cam_x, cam_y, cam_x + vp_w, cam_y + vp_h)).convert("RGB")
             frames.append(np.array(cropped))
 
-    import imageio
-    writer = imageio.get_writer(output_path, fps=fps, codec="libx264", quality=8)
-    for frame in frames:
-        writer.append_data(frame)
-    writer.close()
+    try:
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_path, fourcc, float(fps), (vp_w, vp_h))
+        for frame in frames:
+            bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            out.write(bgr)
+        out.release()
+    except Exception as e:
+        print(f"OpenCV video rendering note: {e}")
 
 # --------------------------------------------------------------------------
 # Pipeline Execution Endpoint Engine
