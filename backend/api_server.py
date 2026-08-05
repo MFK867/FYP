@@ -1429,7 +1429,13 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
     vp_w, vp_h = 640, 368
     base_img = scene.convert("RGBA").resize((vp_w, vp_h), Image.BILINEAR)
     w, h = vp_w, vp_h
-    frames = []
+    
+    import imageio
+    writer = None
+    try:
+        writer = imageio.get_writer(output_path, fps=20, codec="libx264", quality=8)
+    except Exception as e:
+        print(f"Video writer init error: {e}")
 
     if is_fighting:
         clean_bg = Image.new("RGBA", (w, h), (20, 18, 30, 255))
@@ -1523,7 +1529,8 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
                 draw.text((w // 2 - 50, h // 2 - 15), "K. O.", fill=(255, 40, 40, 255))
                 draw.text((w // 2 - 80, h // 2 + 10), "P1 VICTORY!", fill=(255, 215, 0, 255))
 
-            frames.append(np.array(frame_img.convert("RGB")))
+            if writer:
+                writer.append_data(np.array(frame_img.convert("RGB")))
 
     elif is_racing:
         total_frames = 150
@@ -1568,8 +1575,8 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
                 draw.rectangle([w // 2 - 140, 80, w // 2 + 140, 140], outline=(0, 255, 200, 255), width=3)
                 draw.text((w // 2 - 100, 98), "FINISH! 1ST PLACE", fill=(0, 255, 240, 255))
 
-            frame = frame_img.convert("RGB")
-            frames.append(np.array(frame))
+            if writer:
+                writer.append_data(np.array(frame_img.convert("RGB")))
 
     else:
         total_frames = 150
@@ -1630,17 +1637,14 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             cam_y = max(0, min(max(0, h - vp_h), py_scr + sprite_h // 2 - vp_h // 2))
 
             # Since base_img is already at viewport size, no crop needed
-            frames.append(np.array(frame_img.convert("RGB")))
+            if writer:
+                writer.append_data(np.array(frame_img.convert("RGB")))
 
-    # Save as H.264 MP4 using imageio and ffmpeg-python wheel
-    try:
-        import imageio
-        writer = imageio.get_writer(output_path, fps=20, codec="libx264", quality=8)
-        for frame in frames:
-            writer.append_data(frame)
-        writer.close()
-    except Exception as e:
-        print(f"Video render note: {e}")
+    if writer:
+        try:
+            writer.close()
+        except Exception as e:
+            print(f"Video render note: {e}")
 
 # --------------------------------------------------------------------------
 # Pipeline Execution Endpoint Engine
