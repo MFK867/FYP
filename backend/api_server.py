@@ -1431,22 +1431,19 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
     w, h = vp_w, vp_h
     
     import imageio
+    import gc
     writer = None
     try:
-        writer = imageio.get_writer(output_path, fps=20, codec="libx264", quality=8)
+        writer = imageio.get_writer(output_path, fps=20, codec="libx264", quality=8, macro_block_size=None, ffmpeg_params=['-preset', 'ultrafast'])
     except Exception as e:
         print(f"Video writer init error: {e}")
 
     if is_fighting:
-        clean_bg = Image.new("RGBA", (w, h), (20, 18, 30, 255))
-        draw_clean = ImageDraw.Draw(clean_bg)
-        draw_clean.rectangle([0, 0, w, h], fill=(25, 20, 40, 255))
-        for b in range(0, w, 120):
-            draw_clean.rectangle([b, int(h * 0.18), b + 95, h], fill=(35, 30, 55, 255))
-            draw_clean.rectangle([b + 15, int(h * 0.28), b + 45, int(h * 0.42)], fill=(255, 180, 40, 200))
-            draw_clean.rectangle([b + 55, int(h * 0.28), b + 80, int(h * 0.42)], fill=(0, 220, 255, 200))
-        draw_clean.rectangle([0, int(h * 0.72), w, h], fill=(55, 50, 65, 255))
-        draw_clean.rectangle([0, int(h * 0.72), w, int(h * 0.75)], fill=(115, 110, 125, 255))
+        bg_asset = best_assets.get("background")
+        if bg_asset:
+            clean_bg = bg_asset.resize((w, h), Image.LANCZOS).convert("RGBA")
+        else:
+            clean_bg = draw_parallax_sky(w, h, game_plan).convert("RGBA")
 
         total_frames = 150
         p1_base_x = int(w * 0.22)
@@ -1531,6 +1528,8 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
 
             if writer:
                 writer.append_data(np.array(frame_img.convert("RGB")))
+            del frame_img
+            if i % 10 == 0: gc.collect()
 
     elif is_racing:
         total_frames = 150
@@ -1540,17 +1539,12 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
         car_p2 = remove_flat_background(enemy_sprite).resize((180, 90), Image.NEAREST).convert("RGBA") if enemy_sprite else None
 
         for i in range(total_frames):
-            frame_img = Image.new("RGBA", (w, h), (15, 10, 35, 255))
+            bg_asset = best_assets.get("background")
+            if bg_asset:
+                frame_img = bg_asset.resize((w, h), Image.LANCZOS).convert("RGBA")
+            else:
+                frame_img = draw_parallax_sky(w, h, game_plan).convert("RGBA")
             draw = ImageDraw.Draw(frame_img)
-
-            for b in range(0, w, 90):
-                bh = 120 + int(math.sin((b + i * 25) * 0.02) * 40)
-                draw.rectangle([b, h - bh, b + 75, h], fill=(30, 20, 60, 255))
-
-            draw.rectangle([0, int(h * 0.68), w, h], fill=(40, 40, 50, 255))
-            offset = (i * 28) % 60
-            for x in range(-60 + offset, w + 60, 60):
-                draw.rectangle([x, int(h * 0.84), x + 35, int(h * 0.87)], fill=(250, 210, 40, 255))
 
             progress = i / float(total_frames)
             p1_x = int(w * 0.08 + progress * (w * 0.65))
@@ -1577,6 +1571,8 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
 
             if writer:
                 writer.append_data(np.array(frame_img.convert("RGB")))
+            del frame_img
+            if i % 10 == 0: gc.collect()
 
     else:
         total_frames = 150
@@ -1639,6 +1635,8 @@ def generate_preview_video(scene, layout_json, path, best_assets, output_path, f
             # Since base_img is already at viewport size, no crop needed
             if writer:
                 writer.append_data(np.array(frame_img.convert("RGB")))
+            del frame_img
+            if i % 10 == 0: gc.collect()
 
     if writer:
         try:
